@@ -16,10 +16,22 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 
-class StepperView(context: Context, attrs: AttributeSet?) : NestedScrollView(context, attrs) {
+class StepperView(context: Context, attrs: AttributeSet? = null) : NestedScrollView(context, attrs) {
 
     var activity: AppCompatActivity? = context as AppCompatActivity?
+
+    /**
+     * invokes on step header or step button click
+     * currentStepPosition is the position of currently opened step
+     * openingStepPosition is the position of step intended to be opened
+     * Step opens if invocation returns true
+     */
     var beforeStepOpening: ((currentStepPosition: Int, openingStepPosition: Int) -> Boolean)? = null
+
+    /**
+     * invokes on last step button click
+     */
+    var onLastStepButtonClick: (() -> Unit)? = null
 
     var currentStepPosition = 0
     private lateinit var container: LinearLayout
@@ -28,15 +40,15 @@ class StepperView(context: Context, attrs: AttributeSet?) : NestedScrollView(con
     private var defaultButtonText: String = context.getString(R.string.next)
 
     init {
-        val typedArray = context.theme
-                ?.obtainStyledAttributes(attrs, R.styleable.StepperView, 0, 0)
-
-        try {
-            typedArray?.getString(R.styleable.StepperView_defaultStepButtonText)?.let { defaultButtonText = it }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        } finally {
-            typedArray?.recycle()
+        attrs?.let {
+            val typedArray = context.theme?.obtainStyledAttributes(attrs, R.styleable.StepperView, 0, 0)
+            try {
+                typedArray?.getString(R.styleable.StepperView_defaultStepButtonText)?.let { defaultButtonText = it }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                typedArray?.recycle()
+            }
         }
         context.let { createView(it) }
     }
@@ -46,33 +58,62 @@ class StepperView(context: Context, attrs: AttributeSet?) : NestedScrollView(con
         container = v.findViewById(R.id.container)
     }
 
+    /**
+     * @return count of steps
+     */
     fun getStepCount() = steps.size
 
+    /**
+     * Disables steps at needed position
+     */
     fun disableStep(position: Int) = getStepView(position)?.disable()
 
+    /**
+     * Enables steps at needed position
+     */
     fun enableStep(position: Int) = getStepView(position)?.enable()
 
+    /**
+     * Disables steps from needed position
+     */
     fun disableStepsFrom(position: Int) {
         for (i in position until getStepCount()) {
             disableStep(i)
         }
     }
 
+    /**
+     * Enables steps to needed position
+     */
     fun enableStepsTo(position: Int) {
         for (i in 0..position) {
             enableStep(i)
         }
     }
 
+    /**
+     * Enables steps to needed position and disables other steps
+     */
     fun setEnabledSteps(toPosition: Int) {
         enableStepsTo(toPosition)
         disableStepsFrom(toPosition + 1)
     }
 
+
+    /**
+     * Opens step at needed position
+     */
     fun goToStep(position: Int) {
         getStepView(position)?.openStep()
     }
 
+
+    /**
+     * Adds a step to stepper
+     * @param fragment is the step contenr
+     * @param title is the title of a step
+     * @param nextButtonText is the text of step button, if null the text will be the value of defaultButtonText attribute
+     */
     fun addStep(fragment: Fragment, title: String, nextButtonText: String? = null) {
         val step = Step(fragment, title, nextButtonText)
         steps.add(step)
@@ -81,10 +122,16 @@ class StepperView(context: Context, attrs: AttributeSet?) : NestedScrollView(con
         container.addView(stepView)
     }
 
+    /**
+     * sets button text of needed step
+     */
     fun setStepButtonText(stepNum: Int, @StringRes id: Int) {
         getStepView(stepNum)?.setStepButtonText(id)
     }
 
+    /**
+     * @return fragment that is the content of needed step
+     */
     fun getFragment(position: Int): Fragment? {
         return getStepView(position)?.getFragment()
     }
@@ -93,7 +140,7 @@ class StepperView(context: Context, attrs: AttributeSet?) : NestedScrollView(con
         return container.getChildAt(position) as StepView?
     }
 
-    inner class StepView(context: Context?, private val step: Step) : LinearLayout(context) {
+    private inner class StepView(context: Context?, private val step: Step) : LinearLayout(context) {
 
         private lateinit var titleTv: TextView
         private lateinit var numberTv: TextView
@@ -149,10 +196,14 @@ class StepperView(context: Context, attrs: AttributeSet?) : NestedScrollView(con
             if (steps.indexOf(step) == 2) disable()
 
             nextBtn.setOnClickListener {
-                if (beforeStepOpening?.invoke(steps.indexOf(step), steps.indexOf(step) + 1) != false) {
-                    val step = getStepView(steps.indexOf(step) + 1)
-                    step?.openStep()
-                    step?.enable()
+                if (steps.last() == step){
+                    onLastStepButtonClick?.invoke()
+                } else {
+                    if (beforeStepOpening?.invoke(steps.indexOf(step), steps.indexOf(step) + 1) != false) {
+                        val step = getStepView(steps.indexOf(step) + 1)
+                        step?.openStep()
+                        step?.enable()
+                    }
                 }
             }
         }
@@ -209,11 +260,11 @@ class StepperView(context: Context, attrs: AttributeSet?) : NestedScrollView(con
 
         }
     }
-}
 
-class Step(var fragment: Fragment,
-           var stepTitle: String,
-           var stepButtonText: String?)
+    private class Step(var fragment: Fragment,
+                       var stepTitle: String,
+                       var stepButtonText: String?)
+}
 
 object Animations {
     fun expand(v: View) {
