@@ -1,4 +1,4 @@
-package com.example.stepperview
+package com.sabelnikova.stepperview
 
 import android.content.Context
 import android.support.annotation.StringRes
@@ -17,8 +17,6 @@ import android.widget.LinearLayout
 import android.widget.TextView
 
 class StepperView(context: Context, attrs: AttributeSet? = null) : NestedScrollView(context, attrs) {
-
-    var activity: AppCompatActivity? = context as AppCompatActivity?
 
     /**
      * invokes on step header or step button click
@@ -64,12 +62,12 @@ class StepperView(context: Context, attrs: AttributeSet? = null) : NestedScrollV
     fun getStepCount() = steps.size
 
     /**
-     * Disables steps at needed position
+     * Disables step at needed position
      */
     fun disableStep(position: Int) = getStepView(position)?.disable()
 
     /**
-     * Enables steps at needed position
+     * Enables step at needed position
      */
     fun enableStep(position: Int) = getStepView(position)?.enable()
 
@@ -196,7 +194,7 @@ class StepperView(context: Context, attrs: AttributeSet? = null) : NestedScrollV
             if (steps.indexOf(step) == 2) disable()
 
             nextBtn.setOnClickListener {
-                if (steps.last() == step){
+                if (steps.last() == step) {
                     onLastStepButtonClick?.invoke()
                 } else {
                     if (beforeStepOpening?.invoke(steps.indexOf(step), steps.indexOf(step) + 1) != false) {
@@ -208,7 +206,7 @@ class StepperView(context: Context, attrs: AttributeSet? = null) : NestedScrollV
             }
         }
 
-        fun getFragment() = activity?.supportFragmentManager?.findFragmentById(container.id)
+        fun getFragment() = (context as? AppCompatActivity)?.supportFragmentManager?.findFragmentById(container.id)
 
         fun openStep() {
             expand()
@@ -252,10 +250,12 @@ class StepperView(context: Context, attrs: AttributeSet? = null) : NestedScrollV
 
 
         private fun addFragment(fragment: Fragment, tag: String?, containerId: Int) {
-            activity?.let {
-                val fragmentTransaction = it.supportFragmentManager.beginTransaction()
-                fragmentTransaction.add(containerId, fragment, tag)
-                fragmentTransaction.commit()
+            context?.let {
+                if (it is AppCompatActivity) {
+                    val fragmentTransaction = it.supportFragmentManager.beginTransaction()
+                    fragmentTransaction.add(containerId, fragment, tag)
+                    fragmentTransaction.commit()
+                }
             }
 
         }
